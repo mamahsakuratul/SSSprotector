@@ -148,3 +148,53 @@ def validate_session(sid: str) -> bool:
 
 def invalidate_session(sid: str) -> None:
     _sessions.pop(sid, None)
+
+
+# ---------------------------------------------------------------------------
+# Password strength
+# ---------------------------------------------------------------------------
+
+
+def passphrase_strength(passphrase: str) -> int:
+    if not passphrase:
+        return 0
+    score = 0
+    if len(passphrase) >= 12:
+        score += 25
+    if len(passphrase) >= 16:
+        score += 15
+    if re.search(r"[0-9]", passphrase):
+        score += 15
+    if re.search(r"[!@#$%^&*(),.?\":{}|<>]", passphrase):
+        score += 20
+    if re.search(r"[A-Z]", passphrase) and re.search(r"[a-z]", passphrase):
+        score += 10
+    return min(100, score)
+
+
+def check_passphrase_requirements(passphrase: str, min_len: Optional[int] = None) -> List[str]:
+    errors: List[str] = []
+    ml = min_len if min_len is not None else MIN_PASSPHRASE_LEN
+    if len(passphrase) < ml:
+        errors.append(f"Passphrase must be at least {ml} characters")
+    if passphrase_strength(passphrase) < STRENGTH_THRESHOLD:
+        errors.append("Passphrase strength below threshold (add numbers/symbols)")
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# Address validation
+# ---------------------------------------------------------------------------
+
+
+def is_valid_address(addr: str) -> bool:
+    return bool(addr and ADDRESS_REGEX.match(addr.strip()))
+
+
+def normalize_address(addr: str) -> str:
+    if not addr:
+        return ""
+    a = addr.strip()
+    if a.startswith("0x"):
+        return a
+    return "0x" + a
