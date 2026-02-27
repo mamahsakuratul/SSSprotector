@@ -348,3 +348,53 @@ def cmd_check_spend(args: argparse.Namespace) -> int:
     amount = int(args.amount)
     errors = check_spend_limits(amount)
     if not errors:
+        print("OK: within limits")
+        return 0
+    for e in errors:
+        print(f"  - {e}")
+    return 1
+
+
+def cmd_session_create(args: argparse.Namespace) -> int:
+    sid = create_session(args.ttl)
+    print(f"Session: {sid}")
+    return 0
+
+
+def cmd_session_validate(args: argparse.Namespace) -> int:
+    ok = validate_session(args.session_id)
+    print(f"Valid: {ok}")
+    return 0 if ok else 1
+
+
+def cmd_backup_reminder(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    if should_show_backup_reminder(cfg):
+        print("Show backup reminder: yes")
+        if args.dismiss:
+            mark_backup_reminder_shown(cfg)
+            print("Dismissed.")
+    else:
+        print("Show backup reminder: no")
+    return 0
+
+
+def cmd_recent(args: argparse.Namespace) -> int:
+    addrs = load_recent_addresses()
+    for a in addrs[-20:]:
+        print(a)
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog=APP_NAME, description="Wallet protection utilities")
+    parser.add_argument("--version", action="version", version=f"{APP_NAME} {VERSION}")
+    sub = parser.add_subparsers(dest="command", help="Commands")
+
+    p_status = sub.add_parser("status", help="Show status")
+    p_status.set_defaults(func=cmd_status)
+
+    p_strength = sub.add_parser("strength", help="Check passphrase strength")
+    p_strength.add_argument("passphrase", nargs="?", help="Passphrase (or prompt)")
+    p_strength.set_defaults(func=cmd_strength)
+
