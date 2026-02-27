@@ -498,3 +498,53 @@ def cmd_config_get(args: argparse.Namespace) -> int:
         print(cfg.session_ttl)
     elif key == "min_passphrase_len":
         print(cfg.min_passphrase_len)
+    elif key == "daily_cap_wei":
+        print(cfg.daily_cap_wei)
+    elif key == "single_cap_wei":
+        print(cfg.single_cap_wei)
+    elif key == "backup_reminder_days":
+        print(cfg.backup_reminder_days)
+    elif key == "strength_threshold":
+        print(cfg.strength_threshold)
+    else:
+        print(f"Unknown key: {key}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_config_set(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    key = args.key.lower()
+    val = args.value
+    try:
+        if key == "session_ttl":
+            cfg.session_ttl = int(val)
+        elif key == "min_passphrase_len":
+            cfg.min_passphrase_len = int(val)
+        elif key == "daily_cap_wei":
+            cfg.daily_cap_wei = int(val)
+        elif key == "single_cap_wei":
+            cfg.single_cap_wei = int(val)
+        elif key == "backup_reminder_days":
+            cfg.backup_reminder_days = int(val)
+        elif key == "strength_threshold":
+            cfg.strength_threshold = int(val)
+        else:
+            print(f"Unknown key: {key}", file=sys.stderr)
+            return 1
+        save_config(cfg)
+        print("OK")
+    except ValueError as e:
+        print(f"Invalid value: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_export(args: argparse.Namespace) -> int:
+    out = export_snapshot_json()
+    if args.output:
+        Path(args.output).write_text(out, encoding="utf-8")
+        print(f"Written to {args.output}")
+    else:
+        print(out)
+    return 0
