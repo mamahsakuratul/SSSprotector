@@ -298,3 +298,53 @@ def append_recent_address(addr: str) -> None:
     if addr in addrs:
         addrs.remove(addr)
     addrs.append(addr)
+    addrs = addrs[-MAX_RECENT_ADDRESSES:]
+    path = get_recent_addresses_path()
+    get_config_dir().mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"addresses": addrs}, f, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    print(f"{APP_NAME} v{VERSION}")
+    print(f"  Session TTL: {cfg.session_ttl}s")
+    print(f"  Daily cap: {cfg.daily_cap_wei} wei")
+    print(f"  Single tx cap: {cfg.single_cap_wei} wei")
+    print(f"  Rolling spent (24h): {rolling_spent_wei()} wei")
+    print(f"  Active sessions: {len(_sessions)}")
+    if should_show_backup_reminder(cfg):
+        print("  [!] Backup reminder: consider backing up your wallet.")
+    return 0
+
+
+def cmd_strength(args: argparse.Namespace) -> int:
+    passphrase = args.passphrase or input("Passphrase: ")
+    score = passphrase_strength(passphrase)
+    errors = check_passphrase_requirements(passphrase)
+    print(f"Strength score: {score}/100")
+    if errors:
+        for e in errors:
+            print(f"  - {e}")
+    else:
+        print("  OK")
+    return 0 if not errors else 1
+
+
+def cmd_validate_address(args: argparse.Namespace) -> int:
+    addr = args.address or input("Address: ")
+    addr = normalize_address(addr)
+    ok = is_valid_address(addr)
+    print(f"Valid: {ok}")
+    return 0 if ok else 1
+
+
+def cmd_check_spend(args: argparse.Namespace) -> int:
+    amount = int(args.amount)
+    errors = check_spend_limits(amount)
+    if not errors:
