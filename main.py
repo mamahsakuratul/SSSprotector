@@ -248,3 +248,53 @@ def check_spend_limits(amount_wei: int, cfg: Optional[SSSConfig] = None) -> List
 
 # ---------------------------------------------------------------------------
 # Backup reminder
+# ---------------------------------------------------------------------------
+
+
+def should_show_backup_reminder(cfg: Optional[SSSConfig] = None) -> bool:
+    c = cfg or load_config()
+    if not c.last_backup_reminder:
+        return True
+    try:
+        last = datetime.fromisoformat(c.last_backup_reminder)
+        return (datetime.utcnow() - last).days >= c.backup_reminder_days
+    except Exception:
+        return True
+
+
+def mark_backup_reminder_shown(cfg: Optional[SSSConfig] = None) -> None:
+    c = cfg or load_config()
+    c.last_backup_reminder = datetime.utcnow().isoformat()
+    save_config(c)
+
+
+# ---------------------------------------------------------------------------
+# History (recent addresses)
+# ---------------------------------------------------------------------------
+
+
+def get_recent_addresses_path() -> Path:
+    return get_config_dir() / HISTORY_FILENAME
+
+
+def load_recent_addresses() -> List[str]:
+    path = get_recent_addresses_path()
+    if not path.exists():
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        addrs = data.get("addresses", [])
+        return [a for a in addrs if is_valid_address(a)][-MAX_RECENT_ADDRESSES:]
+    except Exception:
+        return []
+
+
+def append_recent_address(addr: str) -> None:
+    if not is_valid_address(addr):
+        return
+    addrs = load_recent_addresses()
+    addr = normalize_address(addr)
+    if addr in addrs:
+        addrs.remove(addr)
+    addrs.append(addr)
