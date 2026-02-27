@@ -448,3 +448,53 @@ def rate_limit_check() -> bool:
 def rate_limit_remaining() -> int:
     now = time.time()
     global _rate_limit_entries
+    _rate_limit_entries = [t for t in _rate_limit_entries if now - t < RATE_LIMIT_WINDOW_SEC]
+    return max(0, RATE_LIMIT_REQUESTS - len(_rate_limit_entries))
+
+
+# ---------------------------------------------------------------------------
+# Integrity hash (for backup verification)
+# ---------------------------------------------------------------------------
+
+
+def compute_integrity_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def verify_integrity(data: bytes, expected_hex: str) -> bool:
+    return hashlib.sha256(data).hexdigest() == expected_hex
+
+
+# ---------------------------------------------------------------------------
+# Export snapshot (non-sensitive state for backup)
+# ---------------------------------------------------------------------------
+
+
+def export_snapshot(cfg: Optional[SSSConfig] = None) -> Dict[str, Any]:
+    c = cfg or load_config()
+    return {
+        "app": APP_NAME,
+        "version": VERSION,
+        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "config": c.to_dict(),
+        "rolling_spent_wei": rolling_spent_wei(),
+        "recent_addresses_count": len(load_recent_addresses()),
+    }
+
+
+def export_snapshot_json(cfg: Optional[SSSConfig] = None) -> str:
+    return json.dumps(export_snapshot(cfg), indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Config set/get CLI
+# ---------------------------------------------------------------------------
+
+
+def cmd_config_get(args: argparse.Namespace) -> int:
+    cfg = load_config()
+    key = args.key.lower()
+    if key == "session_ttl":
+        print(cfg.session_ttl)
+    elif key == "min_passphrase_len":
+        print(cfg.min_passphrase_len)
