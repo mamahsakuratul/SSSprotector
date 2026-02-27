@@ -398,3 +398,53 @@ def main() -> int:
     p_strength.add_argument("passphrase", nargs="?", help="Passphrase (or prompt)")
     p_strength.set_defaults(func=cmd_strength)
 
+    p_addr = sub.add_parser("validate-address", help="Validate an address")
+    p_addr.add_argument("address", nargs="?", help="Address")
+    p_addr.set_defaults(func=cmd_validate_address)
+
+    p_spend = sub.add_parser("check-spend", help="Check spend against limits")
+    p_spend.add_argument("amount", type=int, help="Amount in wei")
+    p_spend.set_defaults(func=cmd_check_spend)
+
+    p_sess = sub.add_parser("session-create", help="Create a session")
+    p_sess.add_argument("--ttl", type=int, default=None, help="TTL seconds")
+    p_sess.set_defaults(func=cmd_session_create)
+
+    p_sess_v = sub.add_parser("session-validate", help="Validate session")
+    p_sess_v.add_argument("session_id", help="Session ID")
+    p_sess_v.set_defaults(func=cmd_session_validate)
+
+    p_backup = sub.add_parser("backup-reminder", help="Check or dismiss backup reminder")
+    p_backup.add_argument("--dismiss", action="store_true", help="Mark reminder as shown")
+    p_backup.set_defaults(func=cmd_backup_reminder)
+
+    p_recent = sub.add_parser("recent", help="List recent addresses")
+    p_recent.set_defaults(func=cmd_recent)
+
+    args = parser.parse_args()
+    if not getattr(args, "func", None):
+        parser.print_help()
+        return 0
+    return args.func(args)
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter
+# ---------------------------------------------------------------------------
+
+_rate_limit_entries: List[float] = []
+
+
+def rate_limit_check() -> bool:
+    now = time.time()
+    global _rate_limit_entries
+    _rate_limit_entries = [t for t in _rate_limit_entries if now - t < RATE_LIMIT_WINDOW_SEC]
+    if len(_rate_limit_entries) >= RATE_LIMIT_REQUESTS:
+        return False
+    _rate_limit_entries.append(now)
+    return True
+
+
+def rate_limit_remaining() -> int:
+    now = time.time()
+    global _rate_limit_entries
