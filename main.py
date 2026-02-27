@@ -198,3 +198,53 @@ def normalize_address(addr: str) -> str:
     if a.startswith("0x"):
         return a
     return "0x" + a
+
+
+# ---------------------------------------------------------------------------
+# Spend limits
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SpendRecord:
+    to_address: str
+    amount_wei: int
+    timestamp: float
+
+
+_rolling_spend: List[SpendRecord] = []
+_ROLLING_WINDOW_SEC = 86400
+
+
+def _trim_rolling() -> None:
+    now = time.time()
+    cutoff = now - _ROLLING_WINDOW_SEC
+    global _rolling_spend
+    _rolling_spend = [r for r in _rolling_spend if r.timestamp > cutoff]
+
+
+def record_spend(to_address: str, amount_wei: int) -> None:
+    _trim_rolling()
+    _rolling_spend.append(SpendRecord(to_address=to_address, amount_wei=amount_wei, timestamp=time.time()))
+
+
+def rolling_spent_wei() -> int:
+    _trim_rolling()
+    return sum(r.amount_wei for r in _rolling_spend)
+
+
+def check_spend_limits(amount_wei: int, cfg: Optional[SSSConfig] = None) -> List[str]:
+    errors: List[str] = []
+    c = cfg or load_config()
+    if amount_wei <= 0:
+        errors.append("Amount must be positive")
+    if amount_wei > c.single_cap_wei:
+        errors.append(f"Amount exceeds single tx cap ({c.single_cap_wei})")
+    current = rolling_spent_wei()
+    if current + amount_wei > c.daily_cap_wei:
+        errors.append(f"Would exceed daily cap ({c.daily_cap_wei}); current rolling: {current}")
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# Backup reminder
