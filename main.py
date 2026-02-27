@@ -548,3 +548,53 @@ def cmd_export(args: argparse.Namespace) -> int:
     else:
         print(out)
     return 0
+
+
+def cmd_record_spend(args: argparse.Namespace) -> int:
+    if not is_valid_address(args.to_address):
+        print("Invalid address", file=sys.stderr)
+        return 1
+    amount = int(args.amount_wei)
+    errors = check_spend_limits(amount)
+    if errors:
+        for e in errors:
+            print(e, file=sys.stderr)
+        return 1
+    record_spend(normalize_address(args.to_address), amount)
+    append_recent_address(args.to_address)
+    print("Recorded.")
+    return 0
+
+
+def cmd_rolling_spent(args: argparse.Namespace) -> int:
+    print(rolling_spent_wei())
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Interactive menu (simple)
+# ---------------------------------------------------------------------------
+
+
+def run_interactive() -> int:
+    cfg = load_config()
+    print(f"{APP_NAME} v{VERSION} — Wallet protection")
+    print("  1. Status")
+    print("  2. Check passphrase strength")
+    print("  3. Validate address")
+    print("  4. Check spend amount")
+    print("  5. Backup reminder")
+    print("  6. Recent addresses")
+    print("  7. Export snapshot")
+    print("  0. Quit")
+    try:
+        choice = input("Choice: ").strip()
+    except EOFError:
+        return 0
+    if choice == "0":
+        return 0
+    if choice == "1":
+        return cmd_status(argparse.Namespace())
+    if choice == "2":
+        return cmd_strength(argparse.Namespace(passphrase=None))
+    if choice == "3":
