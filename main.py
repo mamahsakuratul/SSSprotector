@@ -98,3 +98,53 @@ def load_config() -> SSSConfig:
         return SSSConfig(config_path=str(path))
 
 
+def save_config(cfg: SSSConfig) -> None:
+    cfg_dir = get_config_dir()
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    path = cfg_dir / CONFIG_FILENAME
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cfg.to_dict(), f, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Session
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class Session:
+    session_id: str
+    created_at: float
+    ttl_seconds: int
+
+    def is_expired(self, now: Optional[float] = None) -> bool:
+        t = now if now is not None else time.time()
+        return t > self.created_at + self.ttl_seconds
+
+
+_sessions: Dict[str, Session] = {}
+
+
+def create_session(ttl: Optional[int] = None) -> str:
+    sid = hashlib.sha256(f"{time.time()}{os.urandom(16)}".encode()).hexdigest()[:24]
+    cfg = load_config()
+    _sessions[sid] = Session(
+        session_id=sid,
+        created_at=time.time(),
+        ttl_seconds=ttl if ttl is not None else cfg.session_ttl,
+    )
+    return sid
+
+
+def validate_session(sid: str) -> bool:
+    if not sid or sid not in _sessions:
+        return False
+    s = _sessions[sid]
+    if s.is_expired():
+        del _sessions[sid]
+        return False
+    return True
+
+
+def invalidate_session(sid: str) -> None:
+    _sessions.pop(sid, None)
