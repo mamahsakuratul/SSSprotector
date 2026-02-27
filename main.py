@@ -648,3 +648,44 @@ def main() -> int:
 
     p_sess_v = sub.add_parser("session-validate", help="Validate session")
     p_sess_v.add_argument("session_id", help="Session ID")
+    p_sess_v.set_defaults(func=cmd_session_validate)
+
+    p_backup = sub.add_parser("backup-reminder", help="Check or dismiss backup reminder")
+    p_backup.add_argument("--dismiss", action="store_true", help="Mark reminder as shown")
+    p_backup.set_defaults(func=cmd_backup_reminder)
+
+    p_recent = sub.add_parser("recent", help="List recent addresses")
+    p_recent.set_defaults(func=cmd_recent)
+
+    p_cget = sub.add_parser("config-get", help="Get config key")
+    p_cget.add_argument("key")
+    p_cget.set_defaults(func=cmd_config_get)
+
+    p_cset = sub.add_parser("config-set", help="Set config key")
+    p_cset.add_argument("key")
+    p_cset.add_argument("value")
+    p_cset.set_defaults(func=cmd_config_set)
+
+    p_export = sub.add_parser("export", help="Export snapshot")
+    p_export.add_argument("--output", "-o", default=None)
+    p_export.set_defaults(func=cmd_export)
+
+    p_rec = sub.add_parser("record-spend", help="Record spend")
+    p_rec.add_argument("to_address")
+    p_rec.add_argument("amount_wei", type=int)
+    p_rec.set_defaults(func=cmd_record_spend)
+
+    sub.add_parser("rolling-spent", help="Show rolling spent").set_defaults(func=cmd_rolling_spent)
+
+    args = parser.parse_args()
+    if args.interactive:
+        return run_interactive()
+    if not getattr(args, "func", None):
+        parser.print_help()
+        return 0
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
