@@ -598,3 +598,53 @@ def run_interactive() -> int:
     if choice == "2":
         return cmd_strength(argparse.Namespace(passphrase=None))
     if choice == "3":
+        return cmd_validate_address(argparse.Namespace(address=None))
+    if choice == "4":
+        amt = input("Amount (wei): ").strip()
+        try:
+            return cmd_check_spend(argparse.Namespace(amount=int(amt)))
+        except ValueError:
+            print("Invalid number", file=sys.stderr)
+            return 1
+    if choice == "5":
+        return cmd_backup_reminder(argparse.Namespace(dismiss=False))
+    if choice == "6":
+        return cmd_recent(argparse.Namespace())
+    if choice == "7":
+        return cmd_export(argparse.Namespace(output=None))
+    print("Unknown choice", file=sys.stderr)
+    return 1
+
+
+# ---------------------------------------------------------------------------
+# Main entry (with interactive flag)
+# ---------------------------------------------------------------------------
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog=APP_NAME, description="Wallet protection utilities")
+    parser.add_argument("--version", action="version", version=f"{APP_NAME} {VERSION}")
+    parser.add_argument("--interactive", "-i", action="store_true", help="Interactive menu")
+    sub = parser.add_subparsers(dest="command", help="Commands")
+
+    p_status = sub.add_parser("status", help="Show status")
+    p_status.set_defaults(func=cmd_status)
+
+    p_strength = sub.add_parser("strength", help="Check passphrase strength")
+    p_strength.add_argument("passphrase", nargs="?", help="Passphrase (or prompt)")
+    p_strength.set_defaults(func=cmd_strength)
+
+    p_addr = sub.add_parser("validate-address", help="Validate an address")
+    p_addr.add_argument("address", nargs="?", help="Address")
+    p_addr.set_defaults(func=cmd_validate_address)
+
+    p_spend = sub.add_parser("check-spend", help="Check spend against limits")
+    p_spend.add_argument("amount", type=int, help="Amount in wei")
+    p_spend.set_defaults(func=cmd_check_spend)
+
+    p_sess = sub.add_parser("session-create", help="Create a session")
+    p_sess.add_argument("--ttl", type=int, default=None, help="TTL seconds")
+    p_sess.set_defaults(func=cmd_session_create)
+
+    p_sess_v = sub.add_parser("session-validate", help="Validate session")
+    p_sess_v.add_argument("session_id", help="Session ID")
